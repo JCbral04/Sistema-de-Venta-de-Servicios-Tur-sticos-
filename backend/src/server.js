@@ -14,21 +14,44 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware
+// ✅ CONFIGURACIÓN CORS CORREGIDA - Múltiples orígenes permitidos
+const allowedOrigins = [
+  'http://localhost:5173',      // Vite dev server
+  'http://localhost:3000',      // React dev server alternativo
+  'https://jcbral04.github.io',  // GitHub Pages (dominio base)
+  'https://jcbral04.github.io/Sistema-de-Venta-de-Servicios-Turisticos-', // GitHub Pages (con path)
+  process.env.FRONTEND_URL      // Variable de entorno en Render (opcional)
+].filter(Boolean); // Elimina undefined/null si FRONTEND_URL no está seteada
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  credentials: true
+  origin: function (origin, callback) {
+    // Permitir requests sin origin (Postman, curl, server-to-server)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log('⚠️ Origen bloqueado por CORS:', origin);
+      callback(new Error('No permitido por CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
+
+// Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health check
+// ✅ Health check mejorado
 app.get('/api/health', (req, res) => {
   res.json({
     success: true,
     message: 'API REST - Sistema de Venta de Servicios Turísticos',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    port: PORT
   });
 });
 
@@ -38,6 +61,15 @@ app.use('/api/catalogo', catalogoRoutes);
 app.use('/api/servicios', serviciosRoutes);
 app.use('/api/reservas', reservasRoutes);
 app.use('/api/usuarios', usuariosRoutes);
+
+// ✅ Ruta raíz para verificar que la API está viva
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'API TurismoGlobal está corriendo',
+    documentation: '/api/health'
+  });
+});
 
 // Ruta no encontrada
 app.use((req, res) => {
@@ -49,7 +81,16 @@ app.use((req, res) => {
 
 // Manejo de errores global
 app.use((err, req, res, next) => {
-  console.error('Error global:', err);
+  console.error('❌ Error global:', err.message);
+  
+  // Si es error de CORS, devolver 403
+  if (err.message === 'No permitido por CORS') {
+    return res.status(403).json({
+      success: false,
+      message: 'Acceso denegado: origen no permitido'
+    });
+  }
+  
   res.status(500).json({
     success: false,
     message: 'Error interno del servidor',
@@ -57,12 +98,13 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log('╔════════════════════════════════════════════════════════╗');
   console.log('║  🌴 API REST - Sistema de Venta de Servicios Turísticos ║');
   console.log('╠════════════════════════════════════════════════════════╣');
-  console.log(`║  🚀 Servidor corriendo en: http://localhost:${PORT}      ║`);
-  console.log('║  📚 Documentación: Ver README.md                      ║');
+  console.log(`║  🚀 Servidor corriendo en: http://0.0.0.0:${PORT}         ║`);
+  console.log(`║  🌍 Entorno: ${(process.env.NODE_ENV || 'development').padEnd(36)} ║`);
+  console.log(`║  🔗 Orígenes permitidos: ${allowedOrigins.length} configurados${' '.repeat(15)} ║`);
   console.log('╚════════════════════════════════════════════════════════╝');
 });
 
