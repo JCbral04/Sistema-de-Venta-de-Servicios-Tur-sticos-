@@ -1,63 +1,60 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import FiltroRegion from '../components/catalogo/FiltroRegion';
 import ListaServicios from '../components/catalogo/ListaServicios';
+import FiltroServicios from '../components/catalogo/FiltroServicios';
+import * as api from '../services/api';
 
 const Home = () => {
-  const { servicios } = useApp();
-  const [filtroRegion, setFiltroRegion] = useState('Todas');
-  const [filtroPais, setFiltroPais] = useState('Todos');
-  const [busqueda, setBusqueda] = useState('');
+  const { servicios, loading, error, agregarAlCarrito } = useApp();
+  const [serviciosFiltrados, setServiciosFiltrados] = useState([]);
 
-  const serviciosFiltrados = useMemo(() => {
-    return servicios.filter(servicio => {
-      const matchRegion = filtroRegion === 'Todas' || servicio.region === filtroRegion;
-      const matchPais = filtroPais === 'Todos' || servicio.pais === filtroPais;
-      const matchBusqueda = !busqueda || 
-        servicio.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-        servicio.descripcion.toLowerCase().includes(busqueda.toLowerCase()) ||
-        servicio.pais.toLowerCase().includes(busqueda.toLowerCase()) ||
-        servicio.categoria.toLowerCase().includes(busqueda.toLowerCase());
-      
-      return matchRegion && matchPais && matchBusqueda && servicio.disponible;
-    });
-  }, [servicios, filtroRegion, filtroPais, busqueda]);
+  useEffect(() => {
+    setServiciosFiltrados(servicios);
+  }, [servicios]);
+
+  const handleFiltrar = async (filtros) => {
+    try {
+      const params = {};
+      if (filtros.pais) params.pais = filtros.pais;
+      if (filtros.categoria) params.categoria = filtros.categoria;
+      if (filtros.disponible === 'true') params.disponible = 'true';
+
+      const response = await api.getServicios(params);
+      if (response.success) {
+        setServiciosFiltrados(response.data);
+      }
+    } catch (err) {
+      console.error('Error filtrando:', err);
+    }
+  };
+
+  if (loading) return <p>Cargando servicios...</p>;
+  if (error) return <p>Error: {error}</p>;
 
   return (
-    <div>
+    <div style={{ padding: '2rem' }}>
       <section style={{
-        background: 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)',
-        color: 'white',
-        padding: '4rem 0',
         textAlign: 'center',
-        marginBottom: '2rem'
+        padding: '3rem 1rem',
+        background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
+        color: 'white',
+        borderRadius: '0.5rem',
+        marginBottom: '2rem',
       }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 1.5rem' }}>
-          <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>
-            🌍 Explora el Mundo con Nosotros
-          </h1>
-          <p style={{ fontSize: '1.2rem', opacity: 0.9 }}>
-            Descubre los mejores servicios turísticos y reserva tu próxima aventura
-          </p>
-        </div>
+        <h1>🌍 Explora el Mundo con Nosotros</h1>
+        <p>Descubre los mejores servicios turísticos y reserva tu próxima aventura</p>
       </section>
 
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 1.5rem' }}>
-        <FiltroRegion 
-          filtroRegion={filtroRegion}
-          setFiltroRegion={setFiltroRegion}
-          filtroPais={filtroPais}
-          setFiltroPais={setFiltroPais}
-          busqueda={busqueda}
-          setBusqueda={setBusqueda}
-        />
+      <FiltroServicios onFiltrar={handleFiltrar} />
 
-        <p style={{ marginBottom: '1rem', color: '#64748b' }}>
-          {serviciosFiltrados.length} servicios encontrados
-        </p>
+      <p style={{ marginBottom: '1rem', color: '#64748b' }}>
+        {serviciosFiltrados.length} servicios encontrados
+      </p>
 
-        <ListaServicios servicios={serviciosFiltrados} />
-      </div>
+      <ListaServicios
+        servicios={serviciosFiltrados}
+        onAgregarAlCarrito={agregarAlCarrito}
+      />
     </div>
   );
 };

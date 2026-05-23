@@ -1,123 +1,78 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { useApp } from '../../context/AppContext';
 
-const TarjetaServicio = ({ servicio }) => {
-  const { agregarAlCarrito } = useApp();
+const TarjetaServicio = ({ servicio, onAgregarAlCarrito }) => {
+  const {
+    id_servicio,
+    nombre,
+    descripcion,
+    precio,
+    estado,
+    cupos_disponibles,
+    imagen,
+    duracion,
+    ciudad,
+    pais,
+    categoria,
+  } = servicio;
 
-  const handleReservar = () => {
-    agregarAlCarrito(servicio);
+  const formatearPrecio = (precio) => {
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      minimumFractionDigits: 0,
+    }).format(precio);
   };
+
+  const disponible = estado === 'disponible' && cupos_disponibles > 0;
 
   return (
     <div style={{
-      background: 'white',
-      borderRadius: '0.75rem',
+      border: '1px solid #e2e8f0',
+      borderRadius: '0.5rem',
       overflow: 'hidden',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-      transition: 'transform 0.2s, box-shadow 0.2s',
-      display: 'flex',
-      flexDirection: 'column'
+      background: 'white',
     }}>
-      <div style={{ position: 'relative', height: '200px' }}>
-        <img 
-          src={servicio.imagen} 
-          alt={servicio.nombre}
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-        />
-        <span style={{
-          position: 'absolute',
-          top: '0.5rem',
-          left: '0.5rem',
-          background: '#2563eb',
-          color: 'white',
-          padding: '0.25rem 0.75rem',
-          borderRadius: '0.375rem',
-          fontSize: '0.75rem',
-          fontWeight: 500
-        }}>
-          {servicio.categoria}
-        </span>
-        <span style={{
-          position: 'absolute',
-          top: '0.5rem',
-          right: '0.5rem',
-          background: 'rgba(0,0,0,0.7)',
-          color: 'white',
-          padding: '0.25rem 0.75rem',
-          borderRadius: '0.375rem',
-          fontSize: '0.75rem',
-          fontWeight: 500
-        }}>
-          ⏱️ {servicio.duracion}
-        </span>
-      </div>
-      
-      <div style={{ padding: '1rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '0.5rem', color: '#1e293b' }}>
-          {servicio.nombre}
-        </h3>
-        
-        <div style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '0.5rem' }}>
-          📍 {servicio.pais} • {servicio.region} • {servicio.cupos} cupos
-        </div>
-        
+      <img
+        src={imagen || 'https://via.placeholder.com/400x200'}
+        alt={nombre}
+        style={{ width: '100%', height: '200px', objectFit: 'cover' }}
+      />
+      <div style={{ padding: '1rem' }}>
+        <h3>{nombre}</h3>
+        <p style={{ color: '#64748b', fontSize: '0.875rem' }}>
+          {ciudad}, {pais} • {categoria}
+        </p>
+        <p style={{ marginTop: '0.5rem' }}>{descripcion}</p>
+        <p style={{ marginTop: '0.5rem', fontWeight: 'bold' }}>
+          {formatearPrecio(precio)}
+        </p>
+        <p style={{ fontSize: '0.875rem', color: '#64748b' }}>
+          Duración: {duracion} • Cupos: {cupos_disponibles}
+        </p>
         <p style={{
           fontSize: '0.875rem',
-          color: '#64748b',
-          marginBottom: '0.75rem',
-          display: '-webkit-box',
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: 'vertical',
-          overflow: 'hidden',
-          lineHeight: '1.4'
+          color: disponible ? '#16a34a' : '#dc2626',
+          fontWeight: 'bold',
         }}>
-          {servicio.descripcion}
+          {estado === 'disponible' ? 'Disponible' : 
+           estado === 'agotado' ? 'Agotado' : 'Inactivo'}
         </p>
-        
-        <div style={{ marginTop: 'auto' }}>
-          <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#2563eb', marginBottom: '0.75rem' }}>
-            ${servicio.precio.toLocaleString('es-CO')} COP
-            <span style={{ fontSize: '0.875rem', fontWeight: 400, color: '#64748b' }}> /persona</span>
-          </div>
-          
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <Link 
-              to={`/servicio/${servicio.id}`}
-              style={{
-                flex: 1,
-                padding: '0.625rem',
-                background: 'white',
-                border: '1px solid #2563eb',
-                color: '#2563eb',
-                borderRadius: '0.5rem',
-                textAlign: 'center',
-                textDecoration: 'none',
-                fontWeight: 500,
-                fontSize: '0.875rem'
-              }}
-            >
-              Ver más
-            </Link>
-            <button
-              onClick={handleReservar}
-              disabled={!servicio.disponible}
-              style={{
-                flex: 1,
-                padding: '0.625rem',
-                background: servicio.disponible ? '#2563eb' : '#94a3b8',
-                color: 'white',
-                border: 'none',
-                borderRadius: '0.5rem',
-                fontWeight: 500,
-                fontSize: '0.875rem',
-                cursor: servicio.disponible ? 'pointer' : 'not-allowed'
-              }}
-            >
-              Reservar
-            </button>
-          </div>
-        </div>
+        <button
+          onClick={() => onAgregarAlCarrito(servicio)}
+          disabled={!disponible}
+          style={{
+            marginTop: '1rem',
+            width: '100%',
+            padding: '0.5rem',
+            background: disponible ? '#2563eb' : '#e2e8f0',
+            color: disponible ? 'white' : '#64748b',
+            border: 'none',
+            borderRadius: '0.25rem',
+            cursor: disponible ? 'pointer' : 'not-allowed',
+          }}
+        >
+          {disponible ? 'Agregar al carrito' : 'No disponible'}
+        </button>
       </div>
     </div>
   );

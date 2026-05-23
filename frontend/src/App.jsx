@@ -8,6 +8,7 @@ import DetalleServicio from './pages/DetalleServicio';
 import CarritoPage from './pages/CarritoPage';
 import Checkout from './pages/Checkout';
 import AdminPanel from './pages/AdminPanel';
+import MisReservas from './pages/MisReservas';
 
 const RutaProtegida = ({ children }) => {
   const { esAdmin } = useApp();
@@ -26,6 +27,7 @@ function App() {
               <Route path="/servicio/:id" element={<DetalleServicio />} />
               <Route path="/carrito" element={<CarritoPage />} />
               <Route path="/checkout" element={<Checkout />} />
+              <Route path="/mis-reservas" element={<MisReservas />} />
               <Route path="/admin" element={
                 <RutaProtegida>
                   <AdminPanel />

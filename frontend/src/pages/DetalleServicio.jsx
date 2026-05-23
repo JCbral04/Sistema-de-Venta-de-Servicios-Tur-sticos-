@@ -1,124 +1,123 @@
-import React from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import * as api from '../services/api';
 import { useApp } from '../context/AppContext';
 
 const DetalleServicio = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { servicios, agregarAlCarrito } = useApp();
-  
-  const servicio = servicios.find(s => s.id === parseInt(id));
+  const { agregarAlCarrito } = useApp();
+  const [servicio, setServicio] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  if (!servicio) {
-    return (
-      <div style={{ textAlign: 'center', padding: '4rem 2rem' }}>
-        <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Servicio no encontrado</h2>
-        <Link to="/" style={{ color: '#2563eb', textDecoration: 'none' }}>Volver al inicio</Link>
-      </div>
-    );
-  }
+  useEffect(() => {
+    const cargarServicio = async () => {
+      try {
+        setLoading(true);
+        const response = await api.getServicio(id);
+        if (response.success) {
+          setServicio(response.data);
+        }
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    cargarServicio();
+  }, [id]);
 
-  const handleReservar = () => {
-    agregarAlCarrito(servicio);
-    navigate('/carrito');
+  const formatearPrecio = (precio) => {
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      minimumFractionDigits: 0,
+    }).format(precio);
   };
 
+  if (loading) return <p>Cargando...</p>;
+  if (error) return <p>Error: {error}</p>;
+  if (!servicio) return <p>Servicio no encontrado</p>;
+
+  const disponible = servicio.estado === 'disponible' && servicio.cupos_disponibles > 0;
+
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1.5rem' }}>
-      <button 
-        onClick={() => navigate(-1)}
-        style={{
-          background: 'none',
-          border: 'none',
-          color: '#2563eb',
-          fontSize: '1rem',
-          cursor: 'pointer',
-          marginBottom: '1.5rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem'
-        }}
-      >
-        ← Volver
+    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem' }}>
+      <button onClick={() => navigate('/')} style={{ marginBottom: '1rem' }}>
+        ← Volver al catálogo
       </button>
+
+      <img
+        src={servicio.imagen || 'https://via.placeholder.com/800x400'}
+        alt={servicio.nombre}
+        style={{ width: '100%', borderRadius: '0.5rem', marginBottom: '1.5rem' }}
+      />
+
+      <h1>{servicio.nombre}</h1>
+      <p style={{ color: '#64748b' }}>
+        {servicio.ciudad}, {servicio.pais} • {servicio.categoria}
+      </p>
+
+      <p style={{ marginTop: '1rem', fontSize: '1.125rem' }}>
+        {servicio.descripcion}
+      </p>
 
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '2rem',
-        background: 'white',
-        borderRadius: '0.75rem',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-        overflow: 'hidden'
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: '1rem',
+        marginTop: '1.5rem',
+        padding: '1rem',
+        background: '#f8fafc',
+        borderRadius: '0.5rem',
       }}>
         <div>
-          <img 
-            src={servicio.imagen} 
-            alt={servicio.nombre}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', minHeight: '400px' }}
-          />
-        </div>
-
-        <div style={{ padding: '2rem' }}>
-          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-            <span style={{
-              background: '#2563eb',
-              color: 'white',
-              padding: '0.25rem 0.75rem',
-              borderRadius: '0.375rem',
-              fontSize: '0.875rem',
-              fontWeight: 500
-            }}>
-              {servicio.categoria}
-            </span>
-            <span style={{
-              background: '#f1f5f9',
-              color: '#64748b',
-              padding: '0.25rem 0.75rem',
-              borderRadius: '0.375rem',
-              fontSize: '0.875rem',
-              fontWeight: 500
-            }}>
-              ⏱️ {servicio.duracion}
-            </span>
-          </div>
-
-          <h1 style={{ fontSize: '2rem', fontWeight: 700, marginBottom: '1rem', color: '#1e293b' }}>
-            {servicio.nombre}
-          </h1>
-
-          <div style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '1.5rem' }}>
-            📍 {servicio.region}, {servicio.pais} • {servicio.cupos} cupos disponibles
-          </div>
-
-          <p style={{ fontSize: '1rem', color: '#475569', lineHeight: '1.7', marginBottom: '2rem' }}>
-            {servicio.descripcion}
+          <strong>Precio:</strong>
+          <p style={{ fontSize: '1.5rem', color: '#2563eb', fontWeight: 'bold' }}>
+            {formatearPrecio(servicio.precio)}
           </p>
-
-          <div style={{ fontSize: '2rem', fontWeight: 700, color: '#2563eb', marginBottom: '1.5rem' }}>
-            ${servicio.precio.toLocaleString('es-CO')} COP
-            <span style={{ fontSize: '1rem', fontWeight: 400, color: '#64748b' }}> /persona</span>
-          </div>
-
-          <button
-            onClick={handleReservar}
-            disabled={!servicio.disponible}
-            style={{
-              width: '100%',
-              padding: '1rem',
-              background: servicio.disponible ? '#2563eb' : '#94a3b8',
-              color: 'white',
-              border: 'none',
-              borderRadius: '0.5rem',
-              fontSize: '1.125rem',
-              fontWeight: 600,
-              cursor: servicio.disponible ? 'pointer' : 'not-allowed'
-            }}
-          >
-            🛒 Reservar Ahora
-          </button>
+        </div>
+        <div>
+          <strong>Duración:</strong>
+          <p>{servicio.duracion}</p>
+        </div>
+        <div>
+          <strong>Cupos disponibles:</strong>
+          <p>{servicio.cupos_disponibles}</p>
+        </div>
+        <div>
+          <strong>Estado:</strong>
+          <p style={{
+            color: disponible ? '#16a34a' : '#dc2626',
+            fontWeight: 'bold',
+          }}>
+            {servicio.estado === 'disponible' ? 'Disponible' :
+             servicio.estado === 'agotado' ? 'Agotado' : 'Inactivo'}
+          </p>
         </div>
       </div>
+
+      <button
+        onClick={() => {
+          agregarAlCarrito(servicio);
+          navigate('/carrito');
+        }}
+        disabled={!disponible}
+        style={{
+          marginTop: '1.5rem',
+          width: '100%',
+          padding: '1rem',
+          background: disponible ? '#2563eb' : '#e2e8f0',
+          color: disponible ? 'white' : '#64748b',
+          border: 'none',
+          borderRadius: '0.5rem',
+          fontSize: '1.125rem',
+          cursor: disponible ? 'pointer' : 'not-allowed',
+        }}
+      >
+        {disponible ? 'Agregar al carrito y reservar' : 'No disponible'}
+      </button>
     </div>
   );
 };

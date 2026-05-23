@@ -1,213 +1,209 @@
 import React, { useState } from 'react';
-import { useApp } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
+import { useApp } from '../context/AppContext';
 
 const Checkout = () => {
-  const { totalCarrito, carrito, vaciarCarrito, setUsuario, setEsAdmin } = useApp();
+  const { carrito, totalCarrito, crearReserva, usuario, vaciarCarrito } = useApp();
   const navigate = useNavigate();
   const [paso, setPaso] = useState(1);
-  const [cliente, setCliente] = useState({ nombre: '', email: '', telefono: '', documento: '' });
-  const [compraExitosa, setCompraExitosa] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const formatearPrecio = (precio) => {
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
       currency: 'COP',
-      minimumFractionDigits: 0
+      minimumFractionDigits: 0,
     }).format(precio);
   };
 
-  const handleClienteSubmit = (e) => {
-    e.preventDefault();
-    // Activar modo admin si el email contiene "admin"
-    if (cliente.email.includes('admin')) {
-      setEsAdmin(true);
+  const handleConfirmar = async () => {
+    if (!usuario) {
+      setError('Debes iniciar sesión para completar la compra');
+      return;
     }
-    setUsuario(cliente);
-    setPaso(2);
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await crearReserva();
+      if (result.success) {
+        setPaso(3);
+        setTimeout(() => {
+          navigate('/');
+        }, 3000);
+      } else {
+        setError(result.error);
+      }
+    } catch (err) {
+      setError('Error al procesar la reserva: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handlePago = () => {
-    setCompraExitosa(true);
-    vaciarCarrito();
-    setTimeout(() => navigate('/'), 3000);
-  };
-
-  if (compraExitosa) {
+  if (carrito.length === 0) {
     return (
-      <div style={{ maxWidth: '600px', margin: '0 auto', padding: '5rem 1.5rem', textAlign: 'center' }}>
-        <p style={{ fontSize: '4rem' }}>✅</p>
-        <h1>¡Compra Exitosa!</h1>
-        <p>Gracias {cliente.nombre}, tu reserva ha sido procesada.</p>
-        <p>Redirigiendo al catálogo...</p>
+      <div style={{ padding: '2rem', textAlign: 'center' }}>
+        <h2>Tu carrito está vacío</h2>
+        <button onClick={() => navigate('/')} style={{ marginTop: '1rem' }}>
+          Volver al catálogo
+        </button>
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: '600px', margin: '0 auto', padding: '2rem 1.5rem' }}>
-      <h1>Finalizar Compra</h1>
-      
-      <div style={{ display: 'flex', gap: '1rem', margin: '2rem 0' }}>
+    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem' }}>
+      <h2>Finalizar Compra</h2>
+
+      {/* Indicador de pasos */}
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
         <div style={{
-          flex: 1,
-          padding: '0.75rem',
-          textAlign: 'center',
-          borderRadius: '0.5rem',
-          fontWeight: 500,
+          padding: '0.5rem 1rem',
+          borderRadius: '0.25rem',
           background: paso >= 1 ? '#2563eb' : '#e2e8f0',
-          color: paso >= 1 ? 'white' : '#64748b'
-        }}>
-          1. Datos Personales
-        </div>
+          color: paso >= 1 ? 'white' : '#64748b',
+        }}>1. Resumen</div>
         <div style={{
-          flex: 1,
-          padding: '0.75rem',
-          textAlign: 'center',
-          borderRadius: '0.5rem',
-          fontWeight: 500,
+          padding: '0.5rem 1rem',
+          borderRadius: '0.25rem',
           background: paso >= 2 ? '#2563eb' : '#e2e8f0',
-          color: paso >= 2 ? 'white' : '#64748b'
-        }}>
-          2. Confirmar Pago
-        </div>
+          color: paso >= 2 ? 'white' : '#64748b',
+        }}>2. Confirmar</div>
+        <div style={{
+          padding: '0.5rem 1rem',
+          borderRadius: '0.25rem',
+          background: paso >= 3 ? '#2563eb' : '#e2e8f0',
+          color: paso >= 3 ? 'white' : '#64748b',
+        }}>3. Éxito</div>
       </div>
 
       {paso === 1 && (
-        <form onSubmit={handleClienteSubmit} style={{
-          background: 'white',
-          padding: '2rem',
-          borderRadius: '0.75rem',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-        }}>
-          <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1rem', color: '#1e293b' }}>Datos Personales</h3>
-          <p style={{ color: '#64748b', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
-            💡 Tip: Usa un email con "admin" para activar el panel de administración
-          </p>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '1rem',
-            margin: '1.5rem 0'
-          }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <label style={{ fontSize: '0.875rem', fontWeight: 500 }}>Nombre completo</label>
-              <input
-                type="text"
-                value={cliente.nombre}
-                onChange={e => setCliente({...cliente, nombre: e.target.value})}
-                required
-                placeholder="Juan Pérez"
-                style={{ padding: '0.625rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}
-              />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <label style={{ fontSize: '0.875rem', fontWeight: 500 }}>Documento</label>
-              <input
-                type="text"
-                value={cliente.documento}
-                onChange={e => setCliente({...cliente, documento: e.target.value})}
-                required
-                placeholder="1234567890"
-                style={{ padding: '0.625rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}
-              />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <label style={{ fontSize: '0.875rem', fontWeight: 500 }}>📧 Correo electrónico</label>
-              <input
-                type="email"
-                value={cliente.email}
-                onChange={e => setCliente({...cliente, email: e.target.value})}
-                required
-                placeholder="juan@email.com"
-                style={{ padding: '0.625rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}
-              />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <label style={{ fontSize: '0.875rem', fontWeight: 500 }}>📱 Teléfono</label>
-              <input
-                type="tel"
-                value={cliente.telefono}
-                onChange={e => setCliente({...cliente, telefono: e.target.value})}
-                required
-                placeholder="3001234567"
-                style={{ padding: '0.625rem', border: '1px solid #e2e8f0', borderRadius: '0.5rem' }}
-              />
-            </div>
-          </div>
-          <button type="submit" style={{
-            width: '100%',
-            padding: '0.625rem',
-            borderRadius: '0.5rem',
-            border: 'none',
-            background: '#2563eb',
-            color: 'white',
-            cursor: 'pointer',
-            fontWeight: 500
-          }}>
-            Continuar al Pago →
-          </button>
-        </form>
-      )}
-
-      {paso === 2 && (
-        <div style={{
-          background: 'white',
-          padding: '2rem',
-          borderRadius: '0.75rem',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-        }}>
-          <h3>💳 Resumen de la Compra</h3>
-          <div style={{ margin: '1.5rem 0', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {carrito.map(item => (
-              <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.75rem', borderBottom: '1px solid #e2e8f0' }}>
-                <span>{item.cantidad}x {item.nombre}</span>
-                <span>{formatearPrecio(item.precio * item.cantidad)}</span>
+        <div>
+          <h3>Resumen de la Compra</h3>
+          {carrito.map(item => (
+            <div key={item.id_servicio} style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              padding: '1rem',
+              borderBottom: '1px solid #e2e8f0',
+            }}>
+              <div>
+                <strong>{item.nombre}</strong>
+                <p style={{ color: '#64748b', fontSize: '0.875rem' }}>
+                  {item.cantidad}x {item.ciudad}, {item.pais}
+                </p>
               </div>
-            ))}
-          </div>
+              <div style={{ fontWeight: 'bold' }}>
+                {formatearPrecio(item.precio * item.cantidad)}
+              </div>
+            </div>
+          ))}
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'center',
-            margin: '1.5rem 0',
-            paddingTop: '1rem',
-            borderTop: '2px solid #e2e8f0'
+            padding: '1rem',
+            fontSize: '1.25rem',
+            fontWeight: 'bold',
+            borderTop: '2px solid #1e293b',
           }}>
-            <span>Total a pagar:</span>
-            <span style={{ fontSize: '1.5rem', fontWeight: 700, color: '#2563eb' }}>
-              {formatearPrecio(totalCarrito * 1.19)}
-            </span>
+            <span>Total:</span>
+            <span>{formatearPrecio(totalCarrito)}</span>
           </div>
-          <button 
-            onClick={handlePago}
+          <button
+            onClick={() => setPaso(2)}
             style={{
+              marginTop: '1rem',
               width: '100%',
-              padding: '0.625rem',
-              borderRadius: '0.5rem',
-              border: 'none',
-              background: '#16a34a',
+              padding: '0.75rem',
+              background: '#2563eb',
               color: 'white',
+              border: 'none',
+              borderRadius: '0.25rem',
               cursor: 'pointer',
-              fontWeight: 500,
-              marginBottom: '0.5rem'
             }}
           >
-            💳 Confirmar Pago
+            Continuar
           </button>
-          <button 
-            onClick={() => setPaso(1)}
-            style={{
-              width: '100%',
-              padding: '0.625rem',
-              borderRadius: '0.5rem',
-              border: '1px solid #e2e8f0',
-              background: 'transparent',
-              cursor: 'pointer'
-            }}
-          >
-            Volver
-          </button>
+        </div>
+      )}
+
+      {paso === 2 && (
+        <div>
+          {!usuario && (
+            <div style={{
+              padding: '1rem',
+              background: '#fef3c7',
+              borderRadius: '0.25rem',
+              marginBottom: '1rem',
+            }}>
+              <p>⚠️ Debes <button onClick={() => navigate('/login')} style={{ color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>iniciar sesión</button> para completar la compra</p>
+            </div>
+          )}
+
+          {usuario && (
+            <div style={{
+              padding: '1rem',
+              background: '#f0fdf4',
+              borderRadius: '0.25rem',
+              marginBottom: '1rem',
+            }}>
+              <p>✅ Comprando como: <strong>{usuario.nombre}</strong> ({usuario.correo})</p>
+            </div>
+          )}
+
+          {error && (
+            <div style={{
+              padding: '1rem',
+              background: '#fef2f2',
+              color: '#dc2626',
+              borderRadius: '0.25rem',
+              marginBottom: '1rem',
+            }}>
+              {error}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <button
+              onClick={() => setPaso(1)}
+              style={{
+                padding: '0.75rem 1.5rem',
+                background: '#e2e8f0',
+                border: 'none',
+                borderRadius: '0.25rem',
+                cursor: 'pointer',
+              }}
+            >
+              Volver
+            </button>
+            <button
+              onClick={handleConfirmar}
+              disabled={!usuario || loading}
+              style={{
+                padding: '0.75rem 1.5rem',
+                background: !usuario || loading ? '#e2e8f0' : '#16a34a',
+                color: !usuario || loading ? '#64748b' : 'white',
+                border: 'none',
+                borderRadius: '0.25rem',
+                cursor: !usuario || loading ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {loading ? 'Procesando...' : 'Confirmar Compra'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {paso === 3 && (
+        <div style={{ textAlign: 'center', padding: '2rem' }}>
+          <h2 style={{ color: '#16a34a' }}>✅ ¡Compra Exitosa!</h2>
+          <p>Tus reservas han sido creadas correctamente.</p>
+          <p style={{ color: '#64748b', marginTop: '1rem' }}>
+            Redirigiendo al catálogo...
+          </p>
         </div>
       )}
     </div>

@@ -1,64 +1,104 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import FormServicio from '../components/admin/FormServicio';
 import TablaServicios from '../components/admin/TablaServicios';
+import * as api from '../services/api';
 
 const AdminPanel = () => {
-  const { agregarServicio, editarServicio } = useApp();
-  const [mostrarForm, setMostrarForm] = useState(false);
+  const { esAdmin, servicios, setServicios } = useApp();
+  const navigate = useNavigate();
+  const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [servicioEditar, setServicioEditar] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // Cargar todos los servicios (incluyendo inactivos) para admin
+  useEffect(() => {
+    const cargarServicios = async () => {
+      try {
+        const response = await api.getAllServiciosAdmin();
+        if (response.success) {
+          // Actualizar servicios en el contexto
+          // Nota: necesitarás agregar setServicios al contexto
+        }
+      } catch (err) {
+        console.error('Error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    cargarServicios();
+  }, []);
+
+  if (!esAdmin) {
+    return (
+      <div style={{ padding: '2rem', textAlign: 'center' }}>
+        <h2>Acceso denegado</h2>
+        <p>No tienes permisos de administrador.</p>
+        <button onClick={() => navigate('/')} style={{ marginTop: '1rem' }}>
+          Volver al inicio
+        </button>
+      </div>
+    );
+  }
 
   const handleEditar = (servicio) => {
     setServicioEditar(servicio);
-    setMostrarForm(true);
+    setMostrarFormulario(true);
   };
 
-  const handleCancelar = () => {
+  const handleNuevo = () => {
     setServicioEditar(null);
-    setMostrarForm(false);
+    setMostrarFormulario(true);
   };
 
-  const handleGuardar = (servicioData) => {
-    if (servicioEditar) {
-      editarServicio(servicioEditar.id, servicioData);
-    } else {
-      agregarServicio(servicioData);
-    }
-    handleCancelar();
+  const handleGuardar = () => {
+    setMostrarFormulario(false);
+    setServicioEditar(null);
+    // Recargar servicios
+    window.location.reload();
   };
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1.5rem' }}>
-      <h1 style={{ fontSize: '2rem', fontWeight: 700, marginBottom: '0.5rem', color: '#1e293b' }}>
-        Panel de Administración
-      </h1>
-      <p style={{ color: '#64748b', marginBottom: '1.5rem' }}>Gestiona los servicios turísticos</p>
+    <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
+      <h2>Panel de Administración</h2>
 
-      <button 
-        onClick={() => { setMostrarForm(!mostrarForm); setServicioEditar(null); }}
-        style={{
-          padding: '0.625rem 1.25rem',
-          borderRadius: '0.5rem',
-          border: 'none',
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+        <h3>Gestión de Servicios</h3>
+        <button onClick={handleNuevo} style={{
+          padding: '0.5rem 1rem',
           background: '#2563eb',
           color: 'white',
+          border: 'none',
+          borderRadius: '0.25rem',
           cursor: 'pointer',
-          fontWeight: 500,
-          fontSize: '0.9rem'
-        }}
-      >
-        {mostrarForm ? '❌ Cancelar' : '➕ Nuevo Servicio'}
-      </button>
+        }}>
+          + Nuevo Servicio
+        </button>
+      </div>
 
-      {mostrarForm && (
-        <FormServicio 
-          servicioEditar={servicioEditar} 
-          onGuardar={handleGuardar}
-          onCancelar={handleCancelar} 
-        />
+      {mostrarFormulario && (
+        <div style={{
+          background: '#f8fafc',
+          padding: '1.5rem',
+          borderRadius: '0.5rem',
+          marginBottom: '1.5rem',
+        }}>
+          <FormServicio
+            servicioEditar={servicioEditar}
+            onGuardar={handleGuardar}
+            onCancelar={() => {
+              setMostrarFormulario(false);
+              setServicioEditar(null);
+            }}
+          />
+        </div>
       )}
 
-      <TablaServicios onEditar={handleEditar} />
+      <TablaServicios
+        servicios={servicios}
+        onEditar={handleEditar}
+      />
     </div>
   );
 };

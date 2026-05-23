@@ -1,312 +1,195 @@
 import React, { useState, useEffect } from 'react';
-import { regiones, paises, categorias } from '../../data/mockData';
+import { useApp } from '../../context/AppContext';
+import * as api from '../../services/api';
 
 const FormServicio = ({ servicioEditar, onGuardar, onCancelar }) => {
+  const { agregarServicio, editarServicio } = useApp();
+  const [ciudades, setCiudades] = useState([]);
+  const [categorias, setCategorias] = useState([]);
+  const [loading, setLoading] = useState(false);
+
   const [formData, setFormData] = useState({
     nombre: '',
-    precio: '',
-    region: 'Sudamérica',
-    pais: 'Perú',
-    categoria: 'Arqueológico',
-    duracion: '',
-    cupos: '',
-    imagen: '',
     descripcion: '',
-    disponible: true
+    precio: '',
+    id_ciudad: '',
+    id_categoria: '',
+    cupos_disponibles: '',
+    imagen: '',
+    duracion: '',
+    estado: 'disponible',
   });
 
+  // Cargar ciudades y categorías del backend
+  useEffect(() => {
+    const cargarDatos = async () => {
+      try {
+        const [ciudadesRes, categoriasRes] = await Promise.all([
+          api.getCiudades(),
+          api.getCategorias(),
+        ]);
+        if (ciudadesRes.success) setCiudades(ciudadesRes.data);
+        if (categoriasRes.success) setCategorias(categoriasRes.data);
+      } catch (err) {
+        console.error('Error cargando datos:', err);
+      }
+    };
+    cargarDatos();
+  }, []);
+
+  // Si se edita, cargar datos del servicio
   useEffect(() => {
     if (servicioEditar) {
       setFormData({
         nombre: servicioEditar.nombre || '',
-        precio: servicioEditar.precio || '',
-        region: servicioEditar.region || 'Sudamérica',
-        pais: servicioEditar.pais || 'Perú',
-        categoria: servicioEditar.categoria || 'Arqueológico',
-        duracion: servicioEditar.duracion || '',
-        cupos: servicioEditar.cupos || '',
-        imagen: servicioEditar.imagen || '',
         descripcion: servicioEditar.descripcion || '',
-        disponible: servicioEditar.disponible !== undefined ? servicioEditar.disponible : true
+        precio: servicioEditar.precio || '',
+        id_ciudad: servicioEditar.id_ciudad || '',
+        id_categoria: servicioEditar.id_categoria || '',
+        cupos_disponibles: servicioEditar.cupos_disponibles || '',
+        imagen: servicioEditar.imagen || '',
+        duracion: servicioEditar.duracion || '',
+        estado: servicioEditar.estado || 'disponible',
       });
     }
   }, [servicioEditar]);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const servicioData = {
-      ...formData,
-      precio: Number(formData.precio),
-      cupos: Number(formData.cupos)
-    };
-    onGuardar(servicioData);
-  };
-
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: name === 'precio' || name === 'id_ciudad' || name === 'id_categoria' || name === 'cupos_disponibles'
+        ? value === '' ? '' : Number(value)
+        : value,
     }));
   };
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      if (servicioEditar) {
+        const result = await editarServicio(servicioEditar.id_servicio, formData);
+        if (result.success) {
+          onGuardar();
+        } else {
+          alert('Error: ' + result.error);
+        }
+      } else {
+        const result = await agregarServicio(formData);
+        if (result.success) {
+          onGuardar();
+        } else {
+          alert('Error: ' + result.error);
+        }
+      }
+    } catch (err) {
+      alert('Error al guardar: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div style={{
-      background: 'white',
-      padding: '2rem',
-      borderRadius: '0.75rem',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-      marginBottom: '2rem'
-    }}>
-      <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '1.5rem', color: '#1e293b' }}>
-        {servicioEditar ? 'Editar Servicio' : 'Nuevo Servicio'}
-      </h2>
-      
-      <form onSubmit={handleSubmit}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#64748b', marginBottom: '0.5rem' }}>
-              Nombre del servicio
-            </label>
-            <input
-              type="text"
-              name="nombre"
-              value={formData.nombre}
-              onChange={handleChange}
-              required
-              style={{
-                width: '100%',
-                padding: '0.625rem',
-                border: '1px solid #e2e8f0',
-                borderRadius: '0.5rem',
-                fontSize: '0.9rem'
-              }}
-            />
-          </div>
-          
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#64748b', marginBottom: '0.5rem' }}>
-              Precio (COP)
-            </label>
-            <input
-              type="number"
-              name="precio"
-              value={formData.precio}
-              onChange={handleChange}
-              required
-              min="0"
-              style={{
-                width: '100%',
-                padding: '0.625rem',
-                border: '1px solid #e2e8f0',
-                borderRadius: '0.5rem',
-                fontSize: '0.9rem'
-              }}
-            />
-          </div>
-          
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#64748b', marginBottom: '0.5rem' }}>
-              Región
-            </label>
-            <select
-              name="region"
-              value={formData.region}
-              onChange={handleChange}
-              required
-              style={{
-                width: '100%',
-                padding: '0.625rem',
-                border: '1px solid #e2e8f0',
-                borderRadius: '0.5rem',
-                fontSize: '0.9rem'
-              }}
-            >
-              {regiones.filter(r => r !== 'Todas').map(r => (
-                <option key={r} value={r}>{r}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#64748b', marginBottom: '0.5rem' }}>
-              País
-            </label>
-            <select
-              name="pais"
-              value={formData.pais}
-              onChange={handleChange}
-              required
-              style={{
-                width: '100%',
-                padding: '0.625rem',
-                border: '1px solid #e2e8f0',
-                borderRadius: '0.5rem',
-                fontSize: '0.9rem'
-              }}
-            >
-              {paises.filter(p => p !== 'Todos').map(p => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#64748b', marginBottom: '0.5rem' }}>
-              Categoría
-            </label>
-            <select
-              name="categoria"
-              value={formData.categoria}
-              onChange={handleChange}
-              required
-              style={{
-                width: '100%',
-                padding: '0.625rem',
-                border: '1px solid #e2e8f0',
-                borderRadius: '0.5rem',
-                fontSize: '0.9rem'
-              }}
-            >
-              {categorias.filter(c => c !== 'Todas').map(c => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#64748b', marginBottom: '0.5rem' }}>
-              Duración
-            </label>
-            <input
-              type="text"
-              name="duracion"
-              value={formData.duracion}
-              onChange={handleChange}
-              placeholder="Ej: 2 días, 4 horas"
-              required
-              style={{
-                width: '100%',
-                padding: '0.625rem',
-                border: '1px solid #e2e8f0',
-                borderRadius: '0.5rem',
-                fontSize: '0.9rem'
-              }}
-            />
-          </div>
-          
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#64748b', marginBottom: '0.5rem' }}>
-              Cupos disponibles
-            </label>
-            <input
-              type="number"
-              name="cupos"
-              value={formData.cupos}
-              onChange={handleChange}
-              required
-              min="0"
-              style={{
-                width: '100%',
-                padding: '0.625rem',
-                border: '1px solid #e2e8f0',
-                borderRadius: '0.5rem',
-                fontSize: '0.9rem'
-              }}
-            />
-          </div>
-          
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#64748b', marginBottom: '0.5rem' }}>
-              URL de imagen
-            </label>
-            <input
-              type="url"
-              name="imagen"
-              value={formData.imagen}
-              onChange={handleChange}
-              placeholder="https://..."
-              required
-              style={{
-                width: '100%',
-                padding: '0.625rem',
-                border: '1px solid #e2e8f0',
-                borderRadius: '0.5rem',
-                fontSize: '0.9rem'
-              }}
-            />
-          </div>
-        </div>
-        
-        <div style={{ marginBottom: '1rem' }}>
-          <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#64748b', marginBottom: '0.5rem' }}>
-            Descripción
-          </label>
-          <textarea
-            name="descripcion"
-            value={formData.descripcion}
-            onChange={handleChange}
-            required
-            rows="4"
-            style={{
-              width: '100%',
-              padding: '0.625rem',
-              border: '1px solid #e2e8f0',
-              borderRadius: '0.5rem',
-              fontSize: '0.9rem',
-              resize: 'vertical'
-            }}
-          />
-        </div>
-        
-        <div style={{ marginBottom: '1.5rem' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: '#64748b' }}>
-            <input
-              type="checkbox"
-              name="disponible"
-              checked={formData.disponible}
-              onChange={handleChange}
-              style={{ width: '1rem', height: '1rem' }}
-            />
-            Servicio disponible
-          </label>
-        </div>
-        
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <button
-            type="submit"
-            style={{
-              padding: '0.625rem 1.25rem',
-              background: '#16a34a',
-              color: 'white',
-              border: 'none',
-              borderRadius: '0.5rem',
-              fontWeight: 500,
-              cursor: 'pointer',
-              fontSize: '0.9rem'
-            }}
-          >
-            💾 Guardar
-          </button>
-          <button
-            type="button"
-            onClick={onCancelar}
-            style={{
-              padding: '0.625rem 1.25rem',
-              background: '#64748b',
-              color: 'white',
-              border: 'none',
-              borderRadius: '0.5rem',
-              fontWeight: 500,
-              cursor: 'pointer',
-              fontSize: '0.9rem'
-            }}
-          >
-            Cancelar
-          </button>
-        </div>
-      </form>
-    </div>
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '500px' }}>
+      <h3>{servicioEditar ? 'Editar Servicio' : 'Nuevo Servicio'}</h3>
+
+      <input
+        name="nombre"
+        value={formData.nombre}
+        onChange={handleChange}
+        placeholder="Nombre del servicio"
+        required
+      />
+
+      <textarea
+        name="descripcion"
+        value={formData.descripcion}
+        onChange={handleChange}
+        placeholder="Descripción"
+        rows="3"
+      />
+
+      <input
+        name="precio"
+        type="number"
+        value={formData.precio}
+        onChange={handleChange}
+        placeholder="Precio"
+        required
+      />
+
+      <select
+        name="id_ciudad"
+        value={formData.id_ciudad}
+        onChange={handleChange}
+        required
+      >
+        <option value="">Seleccionar Ciudad</option>
+        {ciudades.map(c => (
+          <option key={c.id_ciudad} value={c.id_ciudad}>
+            {c.nombre_ciudad} - {c.paises?.nombre_pais}
+          </option>
+        ))}
+      </select>
+
+      <select
+        name="id_categoria"
+        value={formData.id_categoria}
+        onChange={handleChange}
+        required
+      >
+        <option value="">Seleccionar Categoría</option>
+        {categorias.map(cat => (
+          <option key={cat.id_categoria} value={cat.id_categoria}>
+            {cat.nombre_categoria}
+          </option>
+        ))}
+      </select>
+
+      <input
+        name="cupos_disponibles"
+        type="number"
+        value={formData.cupos_disponibles}
+        onChange={handleChange}
+        placeholder="Cupos disponibles"
+        required
+      />
+
+      <input
+        name="imagen"
+        value={formData.imagen}
+        onChange={handleChange}
+        placeholder="URL de imagen"
+      />
+
+      <input
+        name="duracion"
+        value={formData.duracion}
+        onChange={handleChange}
+        placeholder="Duración (ej: 2 días)"
+      />
+
+      <select
+        name="estado"
+        value={formData.estado}
+        onChange={handleChange}
+      >
+        <option value="disponible">Disponible</option>
+        <option value="agotado">Agotado</option>
+        <option value="inactivo">Inactivo</option>
+      </select>
+
+      <div style={{ display: 'flex', gap: '1rem' }}>
+        <button type="submit" disabled={loading}>
+          {loading ? 'Guardando...' : (servicioEditar ? 'Actualizar' : 'Crear')}
+        </button>
+        <button type="button" onClick={onCancelar} disabled={loading}>
+          Cancelar
+        </button>
+      </div>
+    </form>
   );
 };
 
